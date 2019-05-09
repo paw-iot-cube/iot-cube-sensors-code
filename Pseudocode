@@ -1,0 +1,18 @@
+Initalisierung
+    - DIP-Schalter auslesen
+         -> Sensornamen generieren
+    - Publish (topic: discovery/send | payload: Sensorname)
+    - Subscribe (topic: discovery/return | payload: Sensorname/XXX)
+    - blockierendes Lesen (discovery/return)
+    - Speichern empfangene Topic
+    - Subscribe (topic: Sensorname/XXX/intervall)
+    - Publish (topic: Sensorname/XXX/value)
+    - Sensorkommmunikation konfigurieren
+
+while (true)
+{
+    - Auslesen Sensor
+    - Lesen (Sensornamen/XXX/intervall)
+    - Sleep intervall
+    - Publish (topic: Sensorname/XXX/value: value)
+}
