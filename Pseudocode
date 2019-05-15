@@ -1,18 +1,37 @@
 Initalisierung
     - DIP-Schalter auslesen
-         -> Sensornamen generieren
-    - Publish (topic: discovery/send | payload: Sensorname)
-    - Subscribe (topic: discovery/return | payload: Sensorname/XXX)
-    - blockierendes Lesen (discovery/return)
-    - Speichern empfangene Topic
-    - Subscribe (topic: Sensorname/XXX/intervall)
-    - Publish (topic: Sensorname/XXX/value)
+         -> return integer
+    - define SENSOR_X 1
+    - define SENSOR_Y 2
+    ...........
+             
+    - InitPublish (topic: discovery/send)
+    - InitSubscribe (topic: discovery/return)
+    
+    - Publish (topic: discovery/send | payload: Sensor/Sensorname/)
+    - Subscribe blockierend (discovery/return| payload: Sensor/Sensorname/ID/intervall[])
+        - Intervall aus String bestimmmen
+        - InitSubscribe (topic: ID/intervall)
+    - Deabbonieren von Handshake-Topics
+    
     - Sensorkommmunikation konfigurieren
+    
+switch( )    
+{
+    case SENSOR_X
+        -InitPublish (topic: ID/Luftfeuchtigkeit/value)
+        -InitPublish (topic: ID/Temperatur/value)
+        -InitPublish (topic: ID/Luftdruck/value)   
+    case SENSOR_Y
+        -InitPublish (topic: ID/Bewegung/value)
+
+}
+
 
 while (true)
 {
     - Auslesen Sensor
-    - Lesen (Sensornamen/XXX/intervall)
+    - Subscribe (ID/intervall)
     - Sleep intervall
-    - Publish (topic: Sensorname/XXX/value: value)
+    - Publish (topic: ID/Sensorart/value: value)
 }
