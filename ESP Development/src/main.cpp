@@ -64,16 +64,16 @@ void setup() {
   //pinMode(D8, INPUT);
 
   int deviceType = readDeviceType();
-  char deviceName[10] = "";
+  char discoveryMessage[100] = "";
 
   switch (deviceType) {
     case BME_280:
       bme.begin(0x76);
-      strcpy(deviceName, "{\"name\":\"BME280\",\"ip\":\"192.168.0.61\"}");
+      strcpy(discoveryMessage, "{\"name\":\"BME280\",\"ip\":\"192.168.0.42\"}");
       break;
     case HCSR_501:
       pinMode(PIN_ONE_WIRE, INPUT);
-      strcpy(deviceName, "HCSR501");
+      strcpy(discoveryMessage, "HCSR501");
       break;
     default:
       break;
@@ -86,8 +86,7 @@ void setup() {
   // connect to mosquitto broker
   connectToMosquittoBroker(MQTT_BROKER_IP);
   // get client id
-  mqttHandshake(deviceName);
-  Serial.println("omg, sie haben Kenny getötet, ihr Schweine!");
+  mqttHandshake(discoveryMessage);
   // TO DO
   //char locIP[16] = "";
   //locIP = getLocalIPString();
@@ -184,15 +183,14 @@ void connectToMosquittoBroker(const char* brokerIP) {
 
 void mqttHandshake(const char* deviceName) {
   mqttClient.setCallback(subscribeReceive);
-
-  mqttClient.publish(DISCOVERY_DEVICE_TO_NODERED, deviceName);
-  delay(500);
   mqttClient.subscribe(DISCOVERY_NODERED_TO_DEVICE);
 
+  mqttClient.publish(DISCOVERY_DEVICE_TO_NODERED, deviceName);
+
   while(waitForClientId){
+    mqttClient.loop();
     Serial.printf(".");
     delay(500);
-    mqttClient.loop();
   }
   Serial.println();
 }
