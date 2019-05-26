@@ -6,31 +6,48 @@
 #include <PubSubClient.h>
 #include <string.h>
 
-#include "WiFiCredentials.h"
 #include "readSensorValues.h"
+#include "settings.h"
 
-#define MQTT_BROKER_IP "192.168.0.180"
+
 #define DISCOVERY_DEVICE_TO_NODERED "discovery/device"
 #define DISCOVERY_NODERED_TO_DEVICE "discovery/master"
 
-//pins
-#define PIN_D3 0
-#define PIN_D6 12
+// first actuator is at DIP-config 20
 #define FIRST_ACTUATOR_ADDRESS 20
+
+// DIP-config for different devices
 #define HCSR_501 2
 #define BME_280 10
 
-
+// pins
 #define PIN_ONE_WIRE D6
+
+// maximum length for client ID
 #define CLIENT_ID_MAX_LENGTH 9
 
 
-
+// true if device is a sensor
 bool isDeviceSensor;
+
+// specifies which device has been connected, 0-19: sensors, 20-31: actuators
 int deviceType = 0;
+
+// device ID for web interface and MQTT-communication (9 digits)
 char deviceId[CLIENT_ID_MAX_LENGTH + 1] = "0";
+
+// IP-address
+char ipAddress[16] = "";
+
+// true as long as no device ID has been received
 bool waitForClientId = true;
+
+// true if topic hasn't been generated yet
 bool isTopicGenerationNeeded = true;
+
+// sensor read interval in seconds
+unsigned long sensorInterval = 10;
+
 
 Adafruit_BME280 bme;
 WiFiClient espClient;
@@ -38,19 +55,22 @@ PubSubClient mqttClient(espClient);
 
 
 // prototypes
+void getLocalIPString();
 void connectToWifi();
 void connectToMosquittoBroker(const char* brokerIP);
 void mqttHandshake(const char* deviceName);
 int readDeviceType();
-void subscribeReceive(char* topic, byte* payload, unsigned int length);
+void discoveryReceiveId(char* topic, byte* payload, unsigned int length);
+void configReceive(char* topic, byte* payload, unsigned int length);
+void snooze();
 
-/*
-char* getLocalIPString() {
-  IPAddress ip = WiFi.localIP();
-  String ipString = String(ip[0], ip[1], )
-  sprintf(ipString, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+void createDiscoveryMessage(char* messageBuffer, const char* name) {
+  strcpy(messageBuffer, "{\"name\":\"");
+  strcat(messageBuffer, name);
+  strcat(messageBuffer, "\",\"ip\":\"");
+  strcat(messageBuffer, ipAddress);
+  strcat(messageBuffer, "\"}");
 }
-*/
 
 void setup() {
   // open serial interface for monitoring purposes
@@ -63,17 +83,21 @@ void setup() {
   pinMode(D7, INPUT);
   //pinMode(D8, INPUT);
 
+  // connect to WiFi Network
+  connectToWifi();
+  getLocalIPString();
+
   int deviceType = readDeviceType();
   char discoveryMessage[100] = "";
 
   switch (deviceType) {
     case BME_280:
       bme.begin(0x76);
-      strcpy(discoveryMessage, "{\"name\":\"BME280\",\"ip\":\"192.168.0.42\"}");
+      createDiscoveryMessage(discoveryMessage, "BME280");
       break;
     case HCSR_501:
       pinMode(PIN_ONE_WIRE, INPUT);
-      strcpy(discoveryMessage, "HCSR501");
+      createDiscoveryMessage(discoveryMessage, "HCSR501");
       break;
     default:
       break;
@@ -81,12 +105,22 @@ void setup() {
   Serial.printf("device Type %d\n", deviceType);
 
 
-  // connect to WiFi Network
-  connectToWifi();
+
   // connect to mosquitto broker
   connectToMosquittoBroker(MQTT_BROKER_IP);
   // get client id
   mqttHandshake(discoveryMessage);
+
+  // listen to config (sensor) or actuator topic
+  if (isDeviceSensor) {
+    mqttClient.setCallback(configReceive);
+    char configTopic[40] = "config/interval/";
+    strcat(configTopic, deviceId);
+    mqttClient.subscribe(configTopic);
+  } else {
+    // TO DO
+  }
+
   // TO DO
   //char locIP[16] = "";
   //locIP = getLocalIPString();
@@ -131,22 +165,13 @@ void loop() {
     }
   }
 
+  snooze();
+}
 
-  /*static int count = 0;
-  if (count >= 5) {
-    Serial.println("sending temperature to RPi");
-    char temperature[10] = "";
-    sprintf(temperature, "%.1f", bme.readTemperature());
-    mqttClient.publish("sensors/1/temp", temperature);
-    count = 0;
-  }
-  count++;
-
-
-  readHCSR501();
-  Serial.println("");
-  delay(1000);*/
-  delay(1000);
+void getLocalIPString() {
+  IPAddress localIP = WiFi.localIP();
+  sprintf(ipAddress, "%d.%d.%d.%d", localIP[0], localIP[1], localIP[2], localIP[3]);
+  Serial.printf("ip: %s\n", ipAddress);
 }
 
 void connectToWifi() {
@@ -159,7 +184,7 @@ void connectToWifi() {
     Serial.printf(".");
   }
   */
-  // simulating waiting for connection, hopefully established after 5s
+  // simulating waiting for connection, hopefully established after 3s
   for (int i = 0; i < 6; i++) {
     Serial.print(".");
     delay(500);
@@ -171,6 +196,7 @@ void connectToWifi() {
 
 void connectToMosquittoBroker(const char* brokerIP) {
   mqttClient.setServer(brokerIP, 1883);
+  // simulating waiting for connection, hopefully established after 3s
   Serial.printf("MQTT Connecting");
   for (int i = 0; i < 6; i++) {
     Serial.print(".");
@@ -178,11 +204,11 @@ void connectToMosquittoBroker(const char* brokerIP) {
   }
   Serial.println();
   mqttClient.connect("ESP8266Client");
-  Serial.println("Connected (hopefully)");
+  Serial.println("Connected");
 }
 
 void mqttHandshake(const char* deviceName) {
-  mqttClient.setCallback(subscribeReceive);
+  mqttClient.setCallback(discoveryReceiveId);
   mqttClient.subscribe(DISCOVERY_NODERED_TO_DEVICE);
 
   mqttClient.publish(DISCOVERY_DEVICE_TO_NODERED, deviceName);
@@ -195,11 +221,10 @@ void mqttHandshake(const char* deviceName) {
   Serial.println();
 }
 
-int readDeviceType()
-{
-  int deviceTypePins[4]= {D0,D5,D6,D7};
+int readDeviceType() {
+  int deviceTypePins[5]= {D0,D5,D6,D7,D8};
 
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 5; i++) {
     Serial.printf("%d ", digitalRead(deviceTypePins[i]));
     if (digitalRead(deviceTypePins[i])) {
       deviceType+=pow(2,i);
@@ -212,16 +237,20 @@ int readDeviceType()
   return deviceType;
 }
 
-void subscribeReceive(char* topic, byte* payload, unsigned int length) {
+void discoveryReceiveId(char* topic, byte* payload, unsigned int length) {
+  #ifdef DEBUG
   Serial.println("MQTT MESSAGE RECEIVED");
   Serial.printf("Topic: %s\n", topic);
   Serial.printf("Length: %d\n", length);
   Serial.print("Message: ");
-  for(unsigned int i = 0; i < length; i++)
+  #endif
+
+  for (unsigned int i = 0; i < length; i++)
   {
     if (i < CLIENT_ID_MAX_LENGTH) {
       deviceId[i] = char(payload[i]);
     } else {
+      // TO DO
       // error: ID too long
     }
     Serial.print(char(payload[i]));
@@ -233,4 +262,23 @@ void subscribeReceive(char* topic, byte* payload, unsigned int length) {
   }
   Serial.println();
   waitForClientId = false;
+}
+
+void configReceive(char* topic, byte* payload, unsigned int length) {
+  Serial.printf("config received, message: ");
+  unsigned long intervalSeconds = 0;
+  for (unsigned int i = 0; i < length; i++) {
+    Serial.print(char(payload[i]));
+    intervalSeconds += (char(payload[i]) - '0') * pow( 10, length - (i+1) );
+  }
+  Serial.println();
+  Serial.printf("Interval in seconds: %lu\n", intervalSeconds);
+  sensorInterval = intervalSeconds;
+}
+
+void snooze() {
+  for (unsigned long i = 0; i < sensorInterval; i++) {
+    mqttClient.loop();
+    delay(1000);
+  }
 }

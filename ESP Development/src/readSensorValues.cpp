@@ -1,12 +1,12 @@
 #include "readSensorValues.h"
-#include "debug.h"
+#include "settings.h"
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 
 void readHCSR501(PubSubClient mqtt, int pin, const char* topic) {
   static bool motionDetected;
   motionDetected = digitalRead(pin);
-  mqtt.publish(topic, (motionDetected)?"true":"false");
+  mqtt.publish(topic, (motionDetected)?"1":"0");
   #ifdef DEBUG
     Serial.printf("motion detected: %d\n", motionDetected);
   #endif
