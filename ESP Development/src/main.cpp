@@ -24,10 +24,19 @@
 #define DHT_22 4
 #define BME_280 10
 
-
+// colours for Led
+#define LED_RED 1
+#define LED_GREEN 2
+#define LED_BLUE 3
+#define LED_PURPLE 4
+#define LED_WHITE 5
+#define LED_OFF 6
 
 // pins
 #define PIN_ONE_WIRE D1
+#define PIN_LED_RED TX
+#define PIN_LED_GREEN D3
+#define PIN_LED_BLUE RX
 
 // maximum length for client ID
 #define CLIENT_ID_MAX_LENGTH 9
@@ -64,6 +73,7 @@ PubSubClient mqttClient(espClient);
 
 
 // prototypes
+void setLed(int led);
 void getLocalIPString();
 void connectToWifi();
 void connectToMosquittoBroker(const char* brokerIP);
@@ -82,16 +92,25 @@ void createDiscoveryMessage(char* messageBuffer, const char* name) {
 }
 
 void setup() {
+
   // open serial interface for monitoring purposes
   Serial.begin(115200);
   Serial.println();
 
+  pinMode(D8, FUNCTION_3);
+  // CAUTION: disables serial monitor
+  pinMode(PIN_LED_RED, FUNCTION_3);
+  pinMode(PIN_LED_RED, OUTPUT);
+  pinMode(PIN_LED_BLUE, FUNCTION_3);
+  pinMode(PIN_LED_BLUE, OUTPUT);
+  pinMode(PIN_LED_GREEN, OUTPUT);
   pinMode(D0, INPUT);
   pinMode(D5, INPUT);
   pinMode(D6, INPUT);
   pinMode(D7, INPUT);
   pinMode(D8, INPUT);
 
+  setLed(LED_BLUE);
   // connect to WiFi Network
   connectToWifi();
   getLocalIPString();
@@ -121,12 +140,17 @@ void setup() {
     case DHT22:
       dht.begin();
       createDiscoveryMessage(discoveryMessage, "DHT22");
+      break;
     case BME_280:
       bme.begin(0x76);
       createDiscoveryMessage(discoveryMessage, "BME280");
       break;
 
     default:
+      setLed(LED_RED);
+      while(true) {
+        delay(1000);
+      }
       break;
   }
   Serial.printf("device Type %d\n", deviceType);
@@ -145,11 +169,7 @@ void setup() {
   } else {
     // TO DO
   }
-
-  // TO DO
-  //char locIP[16] = "";
-  //locIP = getLocalIPString();
-  //printf("My local IP: %s\n", String(WiFi.localIP()));*/
+  setLed(LED_GREEN);
 }
 
 void loop() {
@@ -345,5 +365,41 @@ void snooze() {
   for (unsigned long i = 0; i < sensorInterval; i++) {
     mqttClient.loop();
     delay(1000);
+  }
+}
+
+void setLed(int led) {
+  switch (led) {
+    case LED_RED:
+      digitalWrite(PIN_LED_GREEN, LOW);
+      digitalWrite(PIN_LED_BLUE, LOW);
+      digitalWrite(PIN_LED_RED, HIGH);
+      break;
+    case LED_GREEN:
+      digitalWrite(PIN_LED_GREEN, HIGH);
+      digitalWrite(PIN_LED_BLUE, LOW);
+      digitalWrite(PIN_LED_RED, LOW);
+      break;
+    case LED_BLUE:
+      digitalWrite(PIN_LED_GREEN, LOW);
+      digitalWrite(PIN_LED_BLUE, HIGH);
+      digitalWrite(PIN_LED_RED, LOW);
+      break;
+    case LED_PURPLE:
+      digitalWrite(PIN_LED_GREEN, LOW);
+      digitalWrite(PIN_LED_BLUE, HIGH);
+      digitalWrite(PIN_LED_RED, HIGH);
+      break;
+    case LED_WHITE:
+      digitalWrite(PIN_LED_GREEN, HIGH);
+      digitalWrite(PIN_LED_BLUE, HIGH);
+      digitalWrite(PIN_LED_RED, HIGH);
+      break;
+    case LED_OFF:
+      digitalWrite(PIN_LED_GREEN, LOW);
+      digitalWrite(PIN_LED_BLUE, LOW);
+      digitalWrite(PIN_LED_RED, LOW);
+    default:
+    break;
   }
 }
