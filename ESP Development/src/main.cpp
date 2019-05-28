@@ -99,11 +99,13 @@ void setup() {
 
   pinMode(D8, FUNCTION_3);
   // CAUTION: disables serial monitor
+  #ifndef DEBUG
   pinMode(PIN_LED_RED, FUNCTION_3);
   pinMode(PIN_LED_RED, OUTPUT);
   pinMode(PIN_LED_BLUE, FUNCTION_3);
   pinMode(PIN_LED_BLUE, OUTPUT);
   pinMode(PIN_LED_GREEN, OUTPUT);
+  #endif
   pinMode(D0, INPUT);
   pinMode(D5, INPUT);
   pinMode(D6, INPUT);
@@ -369,6 +371,7 @@ void snooze() {
 }
 
 void setLed(int led) {
+  #ifndef DEBUG
   switch (led) {
     case LED_RED:
       digitalWrite(PIN_LED_GREEN, LOW);
@@ -402,4 +405,5 @@ void setLed(int led) {
     default:
     break;
   }
+  #endif
 }
