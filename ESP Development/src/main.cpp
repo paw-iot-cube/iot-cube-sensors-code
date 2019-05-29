@@ -22,7 +22,9 @@
 #define HCSR_501 2
 #define MAX_44009 3
 #define DHT_22 4
-#define BME_280 10
+#define BME_280 5
+#define HCSR_04 6
+#define CCS_811 7
 
 // colours for Led
 #define LED_RED 1
@@ -34,9 +36,12 @@
 
 // pins
 #define PIN_ONE_WIRE D1
+#define PIN_TRIGGER_HCSR_04 D1
+#define PIN_ECHO_HCSR_04 D2
 #define PIN_LED_RED TX
 #define PIN_LED_GREEN D3
 #define PIN_LED_BLUE RX
+
 
 // maximum length for client ID
 #define CLIENT_ID_MAX_LENGTH 9
@@ -63,13 +68,16 @@ bool isTopicGenerationNeeded = true;
 // sensor read interval in seconds
 unsigned long sensorInterval = 10;
 
-
+//inintialisation of sensors and clients
 Adafruit_BME280 bme;
 Adafruit_VEML6070 veml = Adafruit_VEML6070();
 MAX44009 max44009;
+UltraSonicDistanceSensor hcsr(PIN_TRIGGER_HCSR_04, PIN_ECHO_HCSR_04);
+Adafruit_CCS811 ccs;
 DHT dht(PIN_ONE_WIRE, DHT22);
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
+
 
 
 // prototypes
@@ -120,6 +128,7 @@ void setup() {
   int deviceType = readDeviceType();
   char discoveryMessage[100] = "";
 
+
   switch (deviceType) {
     case ANALOG_IN:
       createDiscoveryMessage(discoveryMessage, "ANALOG");
@@ -139,13 +148,19 @@ void setup() {
       Serial.println();
       createDiscoveryMessage(discoveryMessage, "MAX44009");
       break;
-    case DHT22:
+    case DHT_22:
       dht.begin();
       createDiscoveryMessage(discoveryMessage, "DHT22");
       break;
     case BME_280:
       bme.begin(0x76);
       createDiscoveryMessage(discoveryMessage, "BME280");
+      break;
+    case HCSR_04:
+      break;
+
+    case CCS_811:
+      ccs.begin();
       break;
 
     default:
@@ -157,6 +172,7 @@ void setup() {
   }
   Serial.printf("device Type %d\n", deviceType);
 
+/*
   // connect to mosquitto broker
   connectToMosquittoBroker(MQTT_BROKER_IP);
   // get client id
@@ -171,7 +187,7 @@ void setup() {
   } else {
     // TO DO
   }
-  setLed(LED_GREEN);
+  setLed(LED_GREEN); */
 }
 
 void loop() {
@@ -213,7 +229,7 @@ void loop() {
         //readMAX44009(mqttClient,max44009,"test");
         break;
 
-      case DHT22:
+      case DHT_22:
         static char topicTemperatureDHT[30] = "sensors/temperature";
         static char topicHumidityDHT[30] = "sensors/humidity";
         if(isTopicGenerationNeeded) {
@@ -238,6 +254,27 @@ void loop() {
         readBME208(mqttClient, bme, topicTemperature, topicPressure, topicHumidity);
         break;
 
+      case HCSR_04:
+        static char topicDistance[30] = "sensors/distance";
+        if(isTopicGenerationNeeded) {
+          strcat(topicDistance, deviceId);
+          isTopicGenerationNeeded = false;
+        }
+        readHCSR04(mqttClient, hcsr, topicDistance);
+        break;
+
+      case CCS_811:
+        static char topicVOC[30] = "sensors/VOC/";
+        static char topicCO2[30] = "sensors/CO2/";
+
+        if(isTopicGenerationNeeded) {
+          strcat(topicVOC, deviceId);
+          strcat(topicCO2, deviceId);
+          isTopicGenerationNeeded = false;
+        }
+        readCCS811(mqttClient, ccs, topicVOC, topicCO2);
+        break;
+
       default:
         break;
     }
@@ -258,7 +295,6 @@ void loop() {
 void getLocalIPString() {
   IPAddress localIP = WiFi.localIP();
   sprintf(ipAddress, "%d.%d.%d.%d", localIP[0], localIP[1], localIP[2], localIP[3]);
-  Serial.printf("ip: %s\n", ipAddress);
 }
 
 void connectToWifi() {
@@ -271,6 +307,7 @@ void connectToWifi() {
     Serial.printf(".");
   }
   */
+  Serial.printf("ip: %s\n", ipAddress);
   // simulating waiting for connection, hopefully established after 3s
   for (int i = 0; i < 6; i++) {
     Serial.print(".");

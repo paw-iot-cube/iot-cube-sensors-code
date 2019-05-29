@@ -90,10 +90,36 @@ void readBME208(PubSubClient mqtt, Adafruit_BME280 bme, const char* tempTopic, c
   #ifdef DEBUG
     Serial.printf("Humidity: %.2f%%\n", humidity);
   #endif
+}
 
-  /*
-  Serial.printf("Temperature: %.1f°C\n", bme.readTemperature());
-  Serial.printf("Altitude: %.0fm\n", bme.readAltitude(SEALEVELPRESSURE_HPA));
-  Serial.printf("Pressure: %.0fhPa\n", bme.readPressure() / 100.0F);
-  */
+void readHCSR04(PubSubClient mqtt, UltraSonicDistanceSensor hcsr, const char* distanceTopic){
+  static double distance;
+  distance = hcsr.measureDistanceCm();
+  char distanceString[32];
+  snprintf(distanceString, sizeof(distanceString), "%g", distance);
+  mqtt.publish(distanceTopic,distanceString);
+  #ifdef DEBUG
+    Serial.printf("Distance: %lf cm\n", distance);
+  #endif
+}
+
+void readCCS811(PubSubClient mqtt, Adafruit_CCS811 ccs, const char* VOCTopic, const char* CO2Topic){
+  static float VOC, CO2;
+  if(!ccs.readData()){
+    VOC = ccs.getTVOC();
+    CO2 = ccs.geteCO2();
+  }
+  static char vocString[7] = "";
+  sprintf(vocString, "%f", VOC);
+  mqtt.publish(VOCTopic, vocString);
+  #ifdef DEBUG
+    Serial.printf("VOC: %f ppb\n", VOC);
+  #endif
+
+  static char co2String[7] = "";
+  sprintf(co2String, "%f", CO2);
+  mqtt.publish(CO2Topic, co2String);
+  #ifdef DEBUG
+    Serial.printf("CO2: %f ppb\n", CO2);
+  #endif
 }
