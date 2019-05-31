@@ -123,3 +123,68 @@ void readCCS811(PubSubClient mqtt, Adafruit_CCS811 ccs, const char* VOCTopic, co
     Serial.printf("CO2: %f ppb\n", CO2);
   #endif
 }
+
+void readBLUEDOT(PubSubClient mqtt, BlueDot_BME280_TSL2591 bluedotBme, BlueDot_BME280_TSL2591 tsl2591, const char* tempTopic, const char* pressTopic, const char* humidTopic, const char* illuminanceTopic){
+  static float temperature, pressure, humidity, illuminance;
+  temperature = bluedotBme.readTempC();
+  pressure = bluedotBme.readPressure();
+  humidity = bluedotBme.readHumidity();
+  illuminance = tsl2591.readIlluminance_TSL2591();
+
+  static char tempString[7] = "";
+  sprintf(tempString, "%.2f", temperature);
+  mqtt.publish(tempTopic, tempString);
+  #ifdef DEBUG
+    Serial.printf("Temperature: %.1f°C\n", temperature);
+  #endif
+
+  static char pressString[7] = "";
+  sprintf(pressString, "%.0f", pressure);
+  mqtt.publish(pressTopic, pressString);
+  #ifdef DEBUG
+    Serial.printf("Pressure: %.2fhPa\n", pressure / 100.0F);
+  #endif
+
+  static char humidString[7] = "";
+  sprintf(humidString, "%.2f", humidity);
+  mqtt.publish(humidTopic, humidString);
+  #ifdef DEBUG
+    Serial.printf("Humidity: %.2f%%\n", humidity);
+  #endif
+
+  static char illuminanceString[7] = "";
+  sprintf(illuminanceString, "%.2f", illuminance);
+  mqtt.publish(illuminanceTopic, illuminanceString);
+  #ifdef DEBUG
+    Serial.printf("Illuminance: %f lux \n", illuminance);
+  #endif
+}
+
+void readBUTTON(PubSubClient mqtt, int pin, const char* buttonTopic){
+  static bool isButtonPressed;
+  isButtonPressed = digitalRead(pin);
+  mqtt.publish(buttonTopic, (isButtonPressed)?"1":"0");
+  #ifdef DEBUG
+    Serial.printf("Button pressed: %d\n", isButtonPressed);
+  #endif
+}
+
+void readMPR121(PubSubClient mqtt, Adafruit_MPR121 mpr121, const char* touchTopic){
+  static uint16_t lasttouched, currtouched;
+  currtouched = mpr121.touched();
+  #ifdef DEBUG
+  for (uint8_t i=0; i<12; i++) {
+    if ((currtouched & _BV(i)) && !(lasttouched & _BV(i)) ) {
+      Serial.print(i); Serial.println(" touched");
+    }
+    if (!(currtouched & _BV(i)) && (lasttouched & _BV(i)) ) {
+      Serial.print(i); Serial.println(" released");
+    }
+  }
+  Serial.printf("Wert: %ud",currtouched);
+  lasttouched = currtouched;
+  #endif DEBUG
+  static char touchedString[6] = "";
+  sprintf(touchedString,"%u", currtouched);
+  mqtt.publish(touchTopic,touchedString);
+}

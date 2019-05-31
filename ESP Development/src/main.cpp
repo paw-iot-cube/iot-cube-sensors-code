@@ -25,6 +25,12 @@
 #define BME_280 5
 #define HCSR_04 6
 #define CCS_811 7
+#define BLUEDOT_BME_280_TSL_2591 8
+#define BUTTON 9
+#define MPR_121 10
+#define MPU_6050 11
+#define LED 20
+
 
 // colours for Led
 #define LED_RED 1
@@ -41,6 +47,7 @@
 #define PIN_LED_RED TX
 #define PIN_LED_GREEN D3
 #define PIN_LED_BLUE RX
+
 
 
 // maximum length for client ID
@@ -74,7 +81,11 @@ Adafruit_VEML6070 veml = Adafruit_VEML6070();
 MAX44009 max44009;
 UltraSonicDistanceSensor hcsr(PIN_TRIGGER_HCSR_04, PIN_ECHO_HCSR_04);
 Adafruit_CCS811 ccs;
+BlueDot_BME280_TSL2591 bluedotBme;
+BlueDot_BME280_TSL2591 tsl2591;
 DHT dht(PIN_ONE_WIRE, DHT22);
+Adafruit_MPR121 mpr121 = Adafruit_MPR121();
+
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
@@ -122,13 +133,13 @@ void setup() {
 
   setLed(LED_BLUE);
   // connect to WiFi Network
-  connectToWifi();
-  getLocalIPString();
+//  connectToWifi();
+//  getLocalIPString();
 
-  int deviceType = readDeviceType();
+  deviceType = readDeviceType();
   char discoveryMessage[100] = "";
 
-
+  Serial.printf("device Type %d\n", deviceType);
   switch (deviceType) {
     case ANALOG_IN:
       createDiscoveryMessage(discoveryMessage, "ANALOG");
@@ -143,9 +154,7 @@ void setup() {
       break;
     case MAX_44009:
       Wire.begin();
-      Serial.print("max44009: ");
-      Serial.print(max44009.begin());
-      Serial.println();
+      max44009.begin();
       createDiscoveryMessage(discoveryMessage, "MAX44009");
       break;
     case DHT_22:
@@ -157,10 +166,43 @@ void setup() {
       createDiscoveryMessage(discoveryMessage, "BME280");
       break;
     case HCSR_04:
+      createDiscoveryMessage(discoveryMessage, "HCSR04");
       break;
 
     case CCS_811:
       ccs.begin();
+      createDiscoveryMessage(discoveryMessage, "CCS811");
+      break;
+
+    case BLUEDOT_BME_280_TSL_2591:
+      bluedotBme.parameter.I2CAddress = 0x77;
+      tsl2591.parameter.I2CAddress = 0x29;
+      Wire.begin();
+      tsl2591.parameter.gain = 0b01;
+      tsl2591.parameter.integration = 0b000;
+      tsl2591.config_TSL2591();
+      bluedotBme.parameter.IIRfilter = 0b100;
+      bluedotBme.parameter.sensorMode = 0b11;
+      bluedotBme.parameter.humidOversampling = 0b101;
+      bluedotBme.parameter.tempOversampling = 0b101;
+      bluedotBme.parameter.pressOversampling = 0b101;
+      bluedotBme.parameter.pressureSeaLevel = 1013.25;
+      bluedotBme.parameter.tempOutsideCelsius = 15;
+      bluedotBme.init_BME280();;
+      tsl2591.init_TSL2591();
+      createDiscoveryMessage(discoveryMessage, "BLUEDOT");
+      break;
+
+    case BUTTON:
+      pinMode(PIN_ONE_WIRE, INPUT);
+      break;
+
+    case MPR_121:
+
+      if (!mpr121.begin(0x5B)) {
+        mpr121.begin(0x5A);
+      }
+      createDiscoveryMessage(discoveryMessage, "MPR121");
       break;
 
     default:
@@ -191,11 +233,11 @@ void setup() {
 }
 
 void loop() {
-  if (!mqttClient.connected()) {
+/*  if (!mqttClient.connected()) {
     // reconnect, TO DO
   }
-  mqttClient.loop();
-  if (isDeviceSensor) {
+  mqttClient.loop(); */
+  if (isDeviceSensor){
     switch (deviceType) {
       case ANALOG_IN:
         static char topicAnalog[30] = "sensors/analog/";
@@ -226,7 +268,7 @@ void loop() {
 
       case MAX_44009:
         // TO DO
-        //readMAX44009(mqttClient,max44009,"test");
+        readMAX44009(mqttClient,max44009,"test");
         break;
 
       case DHT_22:
@@ -274,6 +316,40 @@ void loop() {
         }
         readCCS811(mqttClient, ccs, topicVOC, topicCO2);
         break;
+      case BLUEDOT_BME_280_TSL_2591:
+        static char topicTemperatureBluedot[30] = "sensors/temperature/";
+        static char topicPressureBluedot[30] = "sensors/pressure/";
+        static char topicHumidityBluedot[30] = "sensors/humidity/";
+        static char topicIlluminanceBluedot [30] = "sensors/illuminance";
+
+        if(isTopicGenerationNeeded) {
+          strcat(topicTemperatureBluedot, deviceId);
+          strcat(topicPressureBluedot, deviceId);
+          strcat(topicHumidityBluedot, deviceId);
+          strcat(topicIlluminanceBluedot, deviceId);
+          isTopicGenerationNeeded = false;
+        }
+        readBLUEDOT(mqttClient,bluedotBme, tsl2591, topicTemperatureBluedot, topicPressureBluedot, topicHumidityBluedot, topicIlluminanceBluedot);
+        break;
+
+      case BUTTON:
+        static char topicButton[30] = "sensors/button";
+        if (isTopicGenerationNeeded) {
+          strcat(topicButton, deviceId);
+          isTopicGenerationNeeded = false;
+        }
+        readBUTTON(mqttClient,PIN_ONE_WIRE,topicButton);
+
+        break;
+
+      case MPR_121:
+        static char topicTouched[30] = "sensors/touched/";
+        if(isTopicGenerationNeeded) {
+          strcat(topicTouched, deviceId);
+          isTopicGenerationNeeded = false;
+        }
+        readMPR121(mqttClient, mpr121, topicTouched);
+        break;
 
       default:
         break;
@@ -309,7 +385,7 @@ void connectToWifi() {
   */
   Serial.printf("ip: %s\n", ipAddress);
   // simulating waiting for connection, hopefully established after 3s
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < 20; i++) {
     Serial.print(".");
     delay(500);
   }
