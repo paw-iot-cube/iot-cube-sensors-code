@@ -23,8 +23,26 @@ void readCCS811(PubSubClient mqtt, Adafruit_CCS811 ccs, const char* VOCTopic, co
 void readBLUEDOT(PubSubClient mqtt, BlueDot_BME280_TSL2591 bluedotBme, BlueDot_BME280_TSL2591 tsl2591, const char* tempTopic, const char* pressTopic, const char* humidTopic, const char* illuminanceTopic);
 void readBUTTON(PubSubClient mqtt, int pin, const char* buttonTopic);
 void readMPR121(PubSubClient mqtt, Adafruit_MPR121 mpr121, const char* touchTopic);
-#endif
 
-#ifndef _BV
-#define _BV(bit) (1<< (bit))
+#define ANALOG_IN 0
+#define VEML_6070 1
+#define HCSR_501 2
+#define MAX_44009 3
+#define DHT_22 4
+#define BME_280 5
+#define HCSR_04 6
+#define CCS_811 7
+#define BLUEDOT_BME_280_TSL_2591 8
+#define BUTTON 9
+#define MPR_121 10
+#define MPU_6050 11
+
+// pins
+#define PIN_ONE_WIRE D1
+#define PIN_TRIGGER_HCSR_04 D1
+#define PIN_ECHO_HCSR_04 D2
+
+  #ifndef _BV
+  #define _BV(bit) (1<< (bit))
+  #endif
 #endif

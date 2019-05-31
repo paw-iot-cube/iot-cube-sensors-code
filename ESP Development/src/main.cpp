@@ -1,54 +1,18 @@
 #include <Arduino.h>
-//#include <Wire.h>
+#include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <string.h>
-
-#include "readSensorValues.h"
-#include "settings.h"
+#include <setActuators.h>
+#include <controlLed.h>
+#include <readSensorValues.h>
+#include <settings.h>
 
 
 #define DISCOVERY_DEVICE_TO_NODERED "discovery/device"
 #define DISCOVERY_NODERED_TO_DEVICE "discovery/master"
-
-// first actuator is at DIP-config 20
-#define FIRST_ACTUATOR_ADDRESS 20
-
-// DIP-config for different devices
-#define ANALOG_IN 0
-#define VEML_6070 1
-#define HCSR_501 2
-#define MAX_44009 3
-#define DHT_22 4
-#define BME_280 5
-#define HCSR_04 6
-#define CCS_811 7
-#define BLUEDOT_BME_280_TSL_2591 8
-#define BUTTON 9
-#define MPR_121 10
-#define MPU_6050 11
-#define LED 20
-
-
-// colours for Led
-#define LED_RED 1
-#define LED_GREEN 2
-#define LED_BLUE 3
-#define LED_PURPLE 4
-#define LED_WHITE 5
-#define LED_OFF 6
-
-// pins
-#define PIN_ONE_WIRE D1
-#define PIN_TRIGGER_HCSR_04 D1
-#define PIN_ECHO_HCSR_04 D2
-#define PIN_LED_RED TX
-#define PIN_LED_GREEN D3
-#define PIN_LED_BLUE RX
-
-
 
 // maximum length for client ID
 #define CLIENT_ID_MAX_LENGTH 9
@@ -131,15 +95,15 @@ void setup() {
   pinMode(D7, INPUT);
   pinMode(D8, INPUT);
 
-  setLed(LED_BLUE);
+
+  setStatusLed(INITIALISATION);
   // connect to WiFi Network
-//  connectToWifi();
-//  getLocalIPString();
+  connectToWifi();
+  getLocalIPString();
 
   deviceType = readDeviceType();
   char discoveryMessage[100] = "";
 
-  Serial.printf("device Type %d\n", deviceType);
   switch (deviceType) {
     case ANALOG_IN:
       createDiscoveryMessage(discoveryMessage, "ANALOG");
@@ -206,15 +170,14 @@ void setup() {
       break;
 
     default:
-      setLed(LED_RED);
-      while(true) {
-        delay(1000);
-      }
+      setStatusLed(DIP_ERROR);
       break;
   }
-  Serial.printf("device Type %d\n", deviceType);
 
-/*
+  #ifdef DEBUG
+    Serial.printf("device Type %d\n", deviceType);
+  #endif
+
   // connect to mosquitto broker
   connectToMosquittoBroker(MQTT_BROKER_IP);
   // get client id
@@ -229,14 +192,14 @@ void setup() {
   } else {
     // TO DO
   }
-  setLed(LED_GREEN); */
+  setStatusLed(C0NNECTED);
 }
 
 void loop() {
-/*  if (!mqttClient.connected()) {
+  if (!mqttClient.connected()) {
     // reconnect, TO DO
   }
-  mqttClient.loop(); */
+  mqttClient.loop();
   if (isDeviceSensor){
     switch (deviceType) {
       case ANALOG_IN:
@@ -481,42 +444,4 @@ void snooze() {
     mqttClient.loop();
     delay(1000);
   }
-}
-
-void setLed(int led) {
-  #ifndef DEBUG
-  switch (led) {
-    case LED_RED:
-      digitalWrite(PIN_LED_GREEN, LOW);
-      digitalWrite(PIN_LED_BLUE, LOW);
-      digitalWrite(PIN_LED_RED, HIGH);
-      break;
-    case LED_GREEN:
-      digitalWrite(PIN_LED_GREEN, HIGH);
-      digitalWrite(PIN_LED_BLUE, LOW);
-      digitalWrite(PIN_LED_RED, LOW);
-      break;
-    case LED_BLUE:
-      digitalWrite(PIN_LED_GREEN, LOW);
-      digitalWrite(PIN_LED_BLUE, HIGH);
-      digitalWrite(PIN_LED_RED, LOW);
-      break;
-    case LED_PURPLE:
-      digitalWrite(PIN_LED_GREEN, LOW);
-      digitalWrite(PIN_LED_BLUE, HIGH);
-      digitalWrite(PIN_LED_RED, HIGH);
-      break;
-    case LED_WHITE:
-      digitalWrite(PIN_LED_GREEN, HIGH);
-      digitalWrite(PIN_LED_BLUE, HIGH);
-      digitalWrite(PIN_LED_RED, HIGH);
-      break;
-    case LED_OFF:
-      digitalWrite(PIN_LED_GREEN, LOW);
-      digitalWrite(PIN_LED_BLUE, LOW);
-      digitalWrite(PIN_LED_RED, LOW);
-    default:
-    break;
-  }
-  #endif
 }
