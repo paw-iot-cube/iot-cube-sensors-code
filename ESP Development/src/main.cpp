@@ -54,9 +54,7 @@ WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
 
-
 // prototypes
-void setLed(int led);
 void getLocalIPString();
 void connectToWifi();
 void connectToMosquittoBroker(const char* brokerIP);
@@ -64,6 +62,7 @@ void mqttHandshake(const char* deviceName);
 int readDeviceType();
 void discoveryReceiveId(char* topic, byte* payload, unsigned int length);
 void configReceive(char* topic, byte* payload, unsigned int length);
+void commandReceive(char* topic, byte* payload, unsigned int length);
 void snooze();
 
 void createDiscoveryMessage(char* messageBuffer, const char* name) {
@@ -80,7 +79,8 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
 
-  pinMode(D8, FUNCTION_3);
+  pinMode(RX, FUNCTION_3);
+
   // CAUTION: disables serial monitor
   #ifndef DEBUG
   pinMode(PIN_LED_RED, FUNCTION_3);
@@ -162,13 +162,16 @@ void setup() {
       break;
 
     case MPR_121:
-
       if (!mpr121.begin(0x5B)) {
         mpr121.begin(0x5A);
       }
       createDiscoveryMessage(discoveryMessage, "MPR121");
       break;
 
+    case LED:
+      pinMode(PIN_ONE_WIRE, OUTPUT);
+      createDiscoveryMessage(discoveryMessage, "LED");
+      break;
     default:
       setStatusLed(DIP_ERROR);
       break;
@@ -176,6 +179,7 @@ void setup() {
 
   #ifdef DEBUG
     Serial.printf("device Type %d\n", deviceType);
+    Serial.printf("discovery message: %s\n", discoveryMessage);
   #endif
 
   // connect to mosquitto broker
@@ -189,8 +193,20 @@ void setup() {
     char configTopic[40] = "config/interval/";
     strcat(configTopic, deviceId);
     mqttClient.subscribe(configTopic);
-  } else {
-    // TO DO
+  }
+  else {
+    mqttClient.setCallback(commandReceive);
+    char commandTopic[40] = "actuators/";
+    switch (deviceType) {
+      case LED:
+        strcat(commandTopic,"LED/");
+        strcat(commandTopic,deviceId);
+        mqttClient.subscribe(commandTopic);
+        break;
+      default:
+        setStatusLed(DIP_ERROR);
+        break;
+    }
   }
   setStatusLed(C0NNECTED);
 }
@@ -318,16 +334,7 @@ void loop() {
         break;
     }
   }
-   else {
-    switch (deviceType) {
-      case 20:
-        break;
-      case 21:
-        break;
-      default:
-        break;
-    }
-  }
+
   snooze();
 }
 
@@ -340,33 +347,36 @@ void connectToWifi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWD);
   Serial.print("WiFi Connecting");
   // sometimes stuck in while-loop; TO DO
-  /*
+  int counterTimeout = 0;
   while (WiFi.status() != WL_CONNECTED) {
+    if (counterTimeout > 40) {
+      setStatusLed(WLAN_ERROR);
+    }
     delay(500);
     Serial.printf(".");
+    counterTimeout++;
   }
-  */
+/*
   Serial.printf("ip: %s\n", ipAddress);
   // simulating waiting for connection, hopefully established after 3s
   for (int i = 0; i < 20; i++) {
     Serial.print(".");
     delay(500);
   }
+  */
   Serial.println();
   Serial.printf("Connection to WiFi network %s established, IP-address: ", WIFI_SSID);
   Serial.println(WiFi.localIP());
 }
 
 void connectToMosquittoBroker(const char* brokerIP) {
+
   mqttClient.setServer(brokerIP, 1883);
   // simulating waiting for connection, hopefully established after 3s
   Serial.printf("MQTT Connecting");
-  for (int i = 0; i < 6; i++) {
-    Serial.print(".");
-    delay(500);
+  if(!mqttClient.connect("ESP8266Client")){
+    setStatusLed(MQTT_ERROR);
   }
-  Serial.println();
-  mqttClient.connect("ESP8266Client");
   Serial.println("Connected");
 }
 
@@ -375,11 +385,15 @@ void mqttHandshake(const char* deviceName) {
   mqttClient.subscribe(DISCOVERY_NODERED_TO_DEVICE);
 
   mqttClient.publish(DISCOVERY_DEVICE_TO_NODERED, deviceName);
-
+  int counterTimeout = 0;
   while(waitForClientId){
+    if (counterTimeout > 40) {
+      setStatusLed(ID_ERROR);
+    }
     mqttClient.loop();
     Serial.printf(".");
     delay(500);
+    counterTimeout++;
   }
   Serial.println();
 }
@@ -437,6 +451,22 @@ void configReceive(char* topic, byte* payload, unsigned int length) {
   Serial.println();
   Serial.printf("Interval in seconds: %lu\n", intervalSeconds);
   sensorInterval = intervalSeconds;
+}
+
+void commandReceive(char* topic, byte* payload, unsigned int length){
+  char payloadString[length+1];
+  for(unsigned int i = 0; i < length; i++) {
+    payloadString[i] = char(payload[i]);
+  }
+  payloadString[length] = '\0';
+
+  switch (deviceType) {
+    case LED:
+      setLed(PIN_ONE_WIRE, (bool) atoi(payloadString));
+      break;
+    default:
+      break;
+  }
 }
 
 void snooze() {

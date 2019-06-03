@@ -23,5 +23,5 @@
 #define ID_ERROR 4
 #define DIP_ERROR 5
 void setStatusLed(int status);
-void setLed(int led);
+void setLedColour(int led);
 #endif

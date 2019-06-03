@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 
-void setLed(int led) {
+void setLedColour(int led) {
   #ifndef DEBUG
   switch (led) {
     case LED_RED:
@@ -44,46 +44,46 @@ void setStatusLed(int status)
 {
   switch (status) {
     case INITIALISATION:
-      setLed(LED_BLUE);
+      setLedColour(LED_BLUE);
       break;
 
     case C0NNECTED:
-      setLed(LED_GREEN);
+      setLedColour(LED_GREEN);
       break;
 
     case WLAN_ERROR:
       while (true) {
-        setLed(LED_PURPLE);
-        delay(1000);
-        setLed(LED_OFF);
-        delay(1000);
+        setLedColour(LED_PURPLE);
+        delay(1250);
+        setLedColour(LED_OFF);
+        delay(1250);
       }
       break;
 
     case MQTT_ERROR:
       while (true) {
-        setLed(LED_PURPLE);
-        delay(300);
-        setLed(LED_OFF);
-        delay(300);
+        setLedColour(LED_PURPLE);
+        delay(70);
+        setLedColour(LED_OFF);
+        delay(70);
       }
       break;
 
     case ID_ERROR:
       while (true) {
-        setLed(LED_RED);
-        delay(300);
-        setLed(LED_RED);
-        delay(300);
+        setLedColour(LED_RED);
+        delay(70);
+        setLedColour(LED_OFF);
+        delay(70);
       }
       break;
 
     case DIP_ERROR:
       while (true) {
-        setLed(LED_RED);
-        delay(1000);
-        setLed(LED_RED);
-        delay(1000);
+        setLedColour(LED_RED);
+        delay(1250);
+        setLedColour(LED_OFF);
+        delay(1250);
       }
       break;
 
