@@ -7,7 +7,7 @@ void readANALOG(PubSubClient mqtt, int pin, const char* topic) {
   static float voltage = 0;
   voltage = ((analogRead(pin)/1024.0)*3.3);
   static char voltageString[7] = "";
-  sprintf(voltageString,"%f",voltage);
+  sprintf(voltageString,"%.2f",voltage);
   mqtt.publish(topic, voltageString);
   #ifdef DEBUG
     Serial.printf("Analog Input: %.2fV\n",voltage);
@@ -40,10 +40,10 @@ void readMAX44009(PubSubClient mqtt, MAX44009 max44009, const char* topic){
   static unsigned int light;
   light = max44009.get_lux();
   static char lightString[7] = "";
-  sprintf(lightString, "%u",light);
+  sprintf(lightString, "%.2u",light);
   mqtt.publish(topic,lightString);
   #ifdef DEBUG
-    Serial.printf("Light : %u\n lumen", light);
+    Serial.printf("Light : %.2u\n lumen", light);
   #endif
 }
 
@@ -98,10 +98,10 @@ void readHCSR04(PubSubClient mqtt, UltraSonicDistanceSensor hcsr, const char* di
   static double distance;
   distance = hcsr.measureDistanceCm();
   char distanceString[32];
-  snprintf(distanceString, sizeof(distanceString), "%g", distance);
+  snprintf(distanceString, sizeof(distanceString), "%.2g", distance);
   mqtt.publish(distanceTopic,distanceString);
   #ifdef DEBUG
-    Serial.printf("Distance: %lf cm\n", distance);
+    Serial.printf("Distance: %.2lf cm\n", distance);
   #endif
 }
 
@@ -112,24 +112,24 @@ void readCCS811(PubSubClient mqtt, Adafruit_CCS811 ccs, const char* VOCTopic, co
     CO2 = ccs.geteCO2();
   }
   static char vocString[7] = "";
-  sprintf(vocString, "%f", VOC);
+  sprintf(vocString, "%.2f", VOC);
   mqtt.publish(VOCTopic, vocString);
   #ifdef DEBUG
-    Serial.printf("VOC: %f ppb\n", VOC);
+    Serial.printf("VOC: %.2f ppb\n", VOC);
   #endif
 
   static char co2String[7] = "";
-  sprintf(co2String, "%f", CO2);
+  sprintf(co2String, "%.2f", CO2);
   mqtt.publish(CO2Topic, co2String);
   #ifdef DEBUG
-    Serial.printf("CO2: %f ppb\n", CO2);
+    Serial.printf("CO2: %.2f ppb\n", CO2);
   #endif
 }
 
 void readBLUEDOT(PubSubClient mqtt, BlueDot_BME280_TSL2591 bluedotBme, BlueDot_BME280_TSL2591 tsl2591, const char* tempTopic, const char* pressTopic, const char* humidTopic, const char* illuminanceTopic){
   static float temperature, pressure, humidity, illuminance;
   temperature = bluedotBme.readTempC();
-  pressure = bluedotBme.readPressure();
+  pressure = (bluedotBme.readPressure())*100;
   humidity = bluedotBme.readHumidity();
   illuminance = tsl2591.readIlluminance_TSL2591();
 
@@ -144,7 +144,7 @@ void readBLUEDOT(PubSubClient mqtt, BlueDot_BME280_TSL2591 bluedotBme, BlueDot_B
   sprintf(pressString, "%.0f", pressure);
   mqtt.publish(pressTopic, pressString);
   #ifdef DEBUG
-    Serial.printf("Pressure: %.2fhPa\n", pressure / 100.0F);
+    Serial.printf("Pressure: %.2fhPa\n", pressure);
   #endif
 
   static char humidString[7] = "";
@@ -158,16 +158,20 @@ void readBLUEDOT(PubSubClient mqtt, BlueDot_BME280_TSL2591 bluedotBme, BlueDot_B
   sprintf(illuminanceString, "%.2f", illuminance);
   mqtt.publish(illuminanceTopic, illuminanceString);
   #ifdef DEBUG
-    Serial.printf("Illuminance: %f lux \n", illuminance);
+    Serial.printf("Illuminance: %.2f lux \n", illuminance);
   #endif
 }
 
 void readBUTTON(PubSubClient mqtt, int pin, const char* buttonTopic){
   static bool isButtonPressed;
   isButtonPressed = digitalRead(pin);
-  mqtt.publish(buttonTopic, (isButtonPressed)?"1":"0");
+  #ifdef DEBUG
+    Serial.printf("topic: %s, isButtonPressed: %d\n", buttonTopic, isButtonPressed);
+  #endif
+  static bool status = mqtt.publish(buttonTopic, (isButtonPressed)?"1":"0");
   #ifdef DEBUG
     Serial.printf("Button pressed: %d\n", isButtonPressed);
+    Serial.printf("Send message: %d\n", status);
   #endif
 }
 
@@ -183,7 +187,7 @@ void readMPR121(PubSubClient mqtt, Adafruit_MPR121 mpr121, const char* touchTopi
       Serial.print(i); Serial.println(" released");
     }
   }
-  Serial.printf("Wert: %ud",currtouched);
+  Serial.printf("Wert: %u",currtouched);
   lasttouched = currtouched;
   #endif DEBUG
   static char touchedString[6] = "";

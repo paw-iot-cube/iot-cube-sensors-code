@@ -159,6 +159,7 @@ void setup() {
 
     case BUTTON:
       pinMode(PIN_ONE_WIRE, INPUT);
+      createDiscoveryMessage(discoveryMessage, "BUTTON");
       break;
 
     case MPR_121:
@@ -212,6 +213,9 @@ void setup() {
 }
 
 void loop() {
+  #ifdef DEBUG
+    Serial.printf("ID: %s\n", deviceId);
+  #endif
   if (!mqttClient.connected()) {
     // reconnect, TO DO
   }
@@ -251,8 +255,8 @@ void loop() {
         break;
 
       case DHT_22:
-        static char topicTemperatureDHT[30] = "sensors/temperature";
-        static char topicHumidityDHT[30] = "sensors/humidity";
+        static char topicTemperatureDHT[30] = "sensors/temperature/";
+        static char topicHumidityDHT[30] = "sensors/humidity/";
         if(isTopicGenerationNeeded) {
           strcat(topicTemperatureDHT, deviceId);
           strcat(topicHumidityDHT, deviceId);
@@ -276,7 +280,7 @@ void loop() {
         break;
 
       case HCSR_04:
-        static char topicDistance[30] = "sensors/distance";
+        static char topicDistance[30] = "sensors/distance/";
         if(isTopicGenerationNeeded) {
           strcat(topicDistance, deviceId);
           isTopicGenerationNeeded = false;
@@ -299,7 +303,7 @@ void loop() {
         static char topicTemperatureBluedot[30] = "sensors/temperature/";
         static char topicPressureBluedot[30] = "sensors/pressure/";
         static char topicHumidityBluedot[30] = "sensors/humidity/";
-        static char topicIlluminanceBluedot [30] = "sensors/illuminance";
+        static char topicIlluminanceBluedot [30] = "sensors/luminous/";
 
         if(isTopicGenerationNeeded) {
           strcat(topicTemperatureBluedot, deviceId);
@@ -312,7 +316,7 @@ void loop() {
         break;
 
       case BUTTON:
-        static char topicButton[30] = "sensors/button";
+        static char topicButton[30] = "sensors/button/";
         if (isTopicGenerationNeeded) {
           strcat(topicButton, deviceId);
           isTopicGenerationNeeded = false;
@@ -322,7 +326,7 @@ void loop() {
         break;
 
       case MPR_121:
-        static char topicTouched[30] = "sensors/touched/";
+        static char topicTouched[30] = "sensors/E-field/";
         if(isTopicGenerationNeeded) {
           strcat(topicTouched, deviceId);
           isTopicGenerationNeeded = false;
@@ -396,6 +400,7 @@ void mqttHandshake(const char* deviceName) {
     counterTimeout++;
   }
   Serial.println();
+  mqttClient.unsubscribe(DISCOVERY_NODERED_TO_DEVICE);
 }
 
 int readDeviceType() {
@@ -459,6 +464,9 @@ void commandReceive(char* topic, byte* payload, unsigned int length){
     payloadString[i] = char(payload[i]);
   }
   payloadString[length] = '\0';
+  #ifdef DEBUG
+    Serial.printf("Command received: %s\n", payloadString);
+  #endif
 
   switch (deviceType) {
     case LED:
