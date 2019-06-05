@@ -16,12 +16,14 @@ void readANALOG(PubSubClient mqtt, int pin, const char* topic) {
 
 void readVEML6070(PubSubClient mqtt, Adafruit_VEML6070 veml, const char* topic) {
   static unsigned int uv;
+  static float uvIndex;
   uv = veml.readUV();
+  uvIndex = (float) uv * (5.0/1300);
   static char uvString[7] = "";
-  sprintf(uvString, "%u",uv);
+  sprintf(uvString, "%.2f",uvIndex);
   mqtt.publish(topic,uvString);
   #ifdef DEBUG
-    Serial.printf("UVintensity : %u\n", uv);
+    Serial.printf("UVintensity : %.2f\n", uvIndex);
   #endif
 }
 
