@@ -13,15 +13,14 @@
 #define READSENSORVALUES_H
 void readANALOG(PubSubClient mqtt, int pin, const char* topic);
 void readVEML6070(PubSubClient mqtt, Adafruit_VEML6070 veml, const char* topic);
-void readHCSR501(PubSubClient mqtt, int pin, const char* topic);
+void readHCSR501(PubSubClient mqtt, bool* bufferedValue, const char* topic);
 void readMAX44009(PubSubClient mqtt, MAX44009 max44009, const char* topic);
 void readDHT22(PubSubClient mqtt,DHT dht, const char* tempTopic, const char* humidTopic);
 void readBME208(PubSubClient mqtt, Adafruit_BME280 bme, const char* tempTopic, const char* pressTopic, const char* humidTopic);
 void readHCSR04(PubSubClient mqtt, UltraSonicDistanceSensor hcsr, const char* distanceTopic);
-void readHCSR04(PubSubClient mqtt, UltraSonicDistanceSensor hcsr, const char* distanceTopic);
 void readCCS811(PubSubClient mqtt, Adafruit_CCS811 ccs, const char* VOCTopic, const char* CO2Topic);
 void readBLUEDOT(PubSubClient mqtt, BlueDot_BME280_TSL2591 bluedotBme, BlueDot_BME280_TSL2591 tsl2591, const char* tempTopic, const char* pressTopic, const char* humidTopic, const char* illuminanceTopic);
-void readBUTTON(PubSubClient mqtt, int pin, const char* buttonTopic);
+void readBUTTON(PubSubClient mqtt, bool* bufferedValue, const char* buttonTopic);
 void readMPR121(PubSubClient mqtt, Adafruit_MPR121 mpr121, const char* touchTopic);
 
 #define ANALOG_IN 0

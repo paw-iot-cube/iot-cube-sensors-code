@@ -27,13 +27,12 @@ void readVEML6070(PubSubClient mqtt, Adafruit_VEML6070 veml, const char* topic) 
   #endif
 }
 
-void readHCSR501(PubSubClient mqtt, int pin, const char* topic) {
-  static bool motionDetected;
-  motionDetected = digitalRead(pin);
-  mqtt.publish(topic, (motionDetected)?"1":"0");
+void readHCSR501(PubSubClient mqtt, bool* bufferedValue, const char* topic) {
+  mqtt.publish(topic, (*bufferedValue)?"1":"0");
   #ifdef DEBUG
-    Serial.printf("motion detected: %d\n", motionDetected);
+    Serial.printf("motion detected: %d\n", *bufferedValue);
   #endif
+  *bufferedValue = false;
 }
 
 void readMAX44009(PubSubClient mqtt, MAX44009 max44009, const char* topic){
@@ -162,17 +161,16 @@ void readBLUEDOT(PubSubClient mqtt, BlueDot_BME280_TSL2591 bluedotBme, BlueDot_B
   #endif
 }
 
-void readBUTTON(PubSubClient mqtt, int pin, const char* buttonTopic){
-  static bool isButtonPressed;
-  isButtonPressed = digitalRead(pin);
+void readBUTTON(PubSubClient mqtt, bool* bufferedValue, const char* buttonTopic){
   #ifdef DEBUG
-    Serial.printf("topic: %s, isButtonPressed: %d\n", buttonTopic, isButtonPressed);
+    Serial.printf("topic: %s, isButtonPressed: %d\n", buttonTopic, *bufferedValue);
   #endif
-  static bool status = mqtt.publish(buttonTopic, (isButtonPressed)?"1":"0");
+  static bool status = mqtt.publish(buttonTopic, (*bufferedValue)?"1":"0");
   #ifdef DEBUG
-    Serial.printf("Button pressed: %d\n", isButtonPressed);
+    Serial.printf("Button pressed: %d\n", *bufferedValue);
     Serial.printf("Send message: %d\n", status);
   #endif
+  *bufferedValue = false;
 }
 
 void readMPR121(PubSubClient mqtt, Adafruit_MPR121 mpr121, const char* touchTopic){

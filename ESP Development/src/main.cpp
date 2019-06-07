@@ -34,7 +34,7 @@ char ipAddress[16] = "";
 bool waitForClientId = true;
 
 // true if topic hasn't been generated yet
-bool isTopicGenerationNeeded = true;
+bool isFirstIteration = true;
 
 // sensor read interval in seconds
 unsigned long sensorInterval = 10;
@@ -63,7 +63,7 @@ int readDeviceType();
 void discoveryReceiveId(char* topic, byte* payload, unsigned int length);
 void configReceive(char* topic, byte* payload, unsigned int length);
 void commandReceive(char* topic, byte* payload, unsigned int length);
-void snooze();
+void snooze(bool isBufferingEnabled, bool* buffer);
 
 void createDiscoveryMessage(char* messageBuffer, const char* name) {
   strcpy(messageBuffer, "{\"name\":\"");
@@ -212,6 +212,18 @@ void setup() {
   setStatusLed(C0NNECTED);
 }
 
+bool isBufferingNeeded(int deviceType) {
+  switch(deviceType) {
+    case HCSR_501:
+    case BUTTON:
+      return true;
+      break;
+    default:
+      return false;
+      break;
+  }
+}
+
 void loop() {
   #ifdef DEBUG
     Serial.printf("ID: %s\n", deviceId);
@@ -219,34 +231,38 @@ void loop() {
   if (!mqttClient.connected()) {
     // reconnect, TO DO
   }
+
+  static bool isBufferingEnabled = false;
+  static bool booleanSignalBuffer = false;
+  if (isFirstIteration && isBufferingNeeded(deviceType)) {
+    isBufferingEnabled = true;
+  }
+
   mqttClient.loop();
   if (isDeviceSensor){
     switch (deviceType) {
       case ANALOG_IN:
         static char topicAnalog[30] = "sensors/analog/";
-        if (isTopicGenerationNeeded) {
+        if (isFirstIteration) {
           strcat(topicAnalog, deviceId);
-          isTopicGenerationNeeded = false;
         }
         readANALOG(mqttClient, A0, topicAnalog);
         break;
 
       case VEML_6070:
         static char topicUV[30] = "sensors/UV/";
-        if (isTopicGenerationNeeded) {
+        if (isFirstIteration) {
           strcat(topicUV, deviceId);
-          isTopicGenerationNeeded = false;
         }
         readVEML6070(mqttClient, veml, topicUV);
         break;
 
       case HCSR_501:
         static char topicMotion[30] = "sensors/motion/";
-        if (isTopicGenerationNeeded) {
+        if (isFirstIteration) {
           strcat(topicMotion, deviceId);
-          isTopicGenerationNeeded = false;
         }
-        readHCSR501(mqttClient, PIN_ONE_WIRE, topicMotion);
+        readHCSR501(mqttClient, &booleanSignalBuffer, topicMotion);
         break;
 
       case MAX_44009:
@@ -257,10 +273,9 @@ void loop() {
       case DHT_22:
         static char topicTemperatureDHT[30] = "sensors/temperature/";
         static char topicHumidityDHT[30] = "sensors/humidity/";
-        if(isTopicGenerationNeeded) {
+        if(isFirstIteration) {
           strcat(topicTemperatureDHT, deviceId);
           strcat(topicHumidityDHT, deviceId);
-          isTopicGenerationNeeded = false;
         }
         readDHT22(mqttClient, dht, topicTemperatureDHT, topicHumidityDHT);
         break;
@@ -270,20 +285,18 @@ void loop() {
         static char topicPressure[30] = "sensors/pressure/";
         static char topicHumidity[30] = "sensors/humidity/";
 
-        if(isTopicGenerationNeeded) {
+        if(isFirstIteration) {
           strcat(topicTemperature, deviceId);
           strcat(topicPressure, deviceId);
           strcat(topicHumidity, deviceId);
-          isTopicGenerationNeeded = false;
         }
         readBME208(mqttClient, bme, topicTemperature, topicPressure, topicHumidity);
         break;
 
       case HCSR_04:
         static char topicDistance[30] = "sensors/distance/";
-        if(isTopicGenerationNeeded) {
+        if(isFirstIteration) {
           strcat(topicDistance, deviceId);
-          isTopicGenerationNeeded = false;
         }
         readHCSR04(mqttClient, hcsr, topicDistance);
         break;
@@ -292,10 +305,9 @@ void loop() {
         static char topicVOC[30] = "sensors/VOC/";
         static char topicCO2[30] = "sensors/CO2/";
 
-        if(isTopicGenerationNeeded) {
+        if(isFirstIteration) {
           strcat(topicVOC, deviceId);
           strcat(topicCO2, deviceId);
-          isTopicGenerationNeeded = false;
         }
         readCCS811(mqttClient, ccs, topicVOC, topicCO2);
         break;
@@ -305,31 +317,28 @@ void loop() {
         static char topicHumidityBluedot[30] = "sensors/humidity/";
         static char topicIlluminanceBluedot [30] = "sensors/luminous/";
 
-        if(isTopicGenerationNeeded) {
+        if(isFirstIteration) {
           strcat(topicTemperatureBluedot, deviceId);
           strcat(topicPressureBluedot, deviceId);
           strcat(topicHumidityBluedot, deviceId);
           strcat(topicIlluminanceBluedot, deviceId);
-          isTopicGenerationNeeded = false;
         }
         readBLUEDOT(mqttClient,bluedotBme, tsl2591, topicTemperatureBluedot, topicPressureBluedot, topicHumidityBluedot, topicIlluminanceBluedot);
         break;
 
       case BUTTON:
         static char topicButton[30] = "sensors/button/";
-        if (isTopicGenerationNeeded) {
+        if (isFirstIteration) {
           strcat(topicButton, deviceId);
-          isTopicGenerationNeeded = false;
         }
-        readBUTTON(mqttClient,PIN_ONE_WIRE,topicButton);
+        readBUTTON(mqttClient, &booleanSignalBuffer, topicButton);
 
         break;
 
       case MPR_121:
         static char topicTouched[30] = "sensors/E-field/";
-        if(isTopicGenerationNeeded) {
+        if(isFirstIteration) {
           strcat(topicTouched, deviceId);
-          isTopicGenerationNeeded = false;
         }
         readMPR121(mqttClient, mpr121, topicTouched);
         break;
@@ -339,7 +348,8 @@ void loop() {
     }
   }
 
-  snooze();
+  isFirstIteration = false;
+  snooze(isBufferingEnabled, &booleanSignalBuffer);
 }
 
 void getLocalIPString() {
@@ -477,9 +487,18 @@ void commandReceive(char* topic, byte* payload, unsigned int length){
   }
 }
 
-void snooze() {
+void snooze(bool isBufferingEnabled, bool* buffer) {
   for (unsigned long i = 0; i < sensorInterval; i++) {
     mqttClient.loop();
-    delay(1000);
+    if (isBufferingEnabled) {
+      for (int j = 0; j < 10; j++) {
+        if (digitalRead(PIN_ONE_WIRE)) {
+          *buffer = true;
+        }
+        delay(100);
+      }
+    } else {
+      delay(1000);
+    }
   }
 }
