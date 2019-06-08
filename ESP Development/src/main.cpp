@@ -1,10 +1,11 @@
 #include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
+//#include <Wire.h>
+//#include <Adafruit_Sensor.h>
+//#include <Adafruit_BME280.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <string.h>
+
 #include <setActuators.h>
 #include <controlLed.h>
 #include <readSensorValues.h>
@@ -229,7 +230,7 @@ void loop() {
     Serial.printf("ID: %s\n", deviceId);
   #endif
   if (!mqttClient.connected()) {
-    // reconnect, TO DO
+    connectToMosquittoBroker(MQTT_BROKER_IP);
   }
 
   static bool isBufferingEnabled = false;
@@ -332,7 +333,6 @@ void loop() {
           strcat(topicButton, deviceId);
         }
         readBUTTON(mqttClient, &booleanSignalBuffer, topicButton);
-
         break;
 
       case MPR_121:
@@ -383,12 +383,30 @@ void connectToWifi() {
   Serial.println(WiFi.localIP());
 }
 
+String macToStr(const uint8_t* mac)
+{
+  String result;
+  for (int i = 0; i < 6; ++i) {
+    result += String(mac[i], 16);
+    if (i < 5)
+      result += ':';
+  }
+  return result;
+}
+
 void connectToMosquittoBroker(const char* brokerIP) {
 
   mqttClient.setServer(brokerIP, 1883);
+
+  char MQTT_Name[30] = "ESP_";
+  strcat(MQTT_Name, WiFi.macAddress().c_str());
+  #ifdef DEBUG
+    Serial.printf("MQTT Name: %s\n", MQTT_Name);
+  #endif
+
   // simulating waiting for connection, hopefully established after 3s
   Serial.printf("MQTT Connecting");
-  if(!mqttClient.connect("ESP8266Client")){
+  if(!mqttClient.connect(MQTT_Name)){
     setStatusLed(MQTT_ERROR);
   }
   Serial.println("Connected");
@@ -492,6 +510,7 @@ void snooze(bool isBufferingEnabled, bool* buffer) {
     mqttClient.loop();
     if (isBufferingEnabled) {
       for (int j = 0; j < 10; j++) {
+        mqttClient.loop();
         if (digitalRead(PIN_ONE_WIRE)) {
           *buffer = true;
         }
