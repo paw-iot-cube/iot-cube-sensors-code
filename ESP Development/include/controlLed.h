@@ -22,6 +22,7 @@
 #define MQTT_ERROR 3
 #define ID_ERROR 4
 #define DIP_ERROR 5
+
 void setStatusLed(int status);
-void setLedColour(int led);
+
 #endif

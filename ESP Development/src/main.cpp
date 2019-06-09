@@ -18,6 +18,13 @@
 // maximum length for client ID
 #define CLIENT_ID_MAX_LENGTH 9
 
+// DIP-pins
+#define DIP_PIN_1_LSB D0
+#define DIP_PIN_2 D5
+#define DIP_PIN_3 D6
+#define DIP_PIN_4 D7
+#define DIP_PIN_5_MSB RX
+
 
 // true if device is a sensor
 bool isDeviceSensor;
@@ -65,39 +72,33 @@ void discoveryReceiveId(char* topic, byte* payload, unsigned int length);
 void configReceive(char* topic, byte* payload, unsigned int length);
 void commandReceive(char* topic, byte* payload, unsigned int length);
 void snooze(bool isBufferingEnabled, bool* buffer);
-
-void createDiscoveryMessage(char* messageBuffer, const char* name) {
-  strcpy(messageBuffer, "{\"name\":\"");
-  strcat(messageBuffer, name);
-  strcat(messageBuffer, "\",\"ip\":\"");
-  strcat(messageBuffer, ipAddress);
-  strcat(messageBuffer, "\"}");
-}
+void createDiscoveryMessage(char* messageBuffer, const char* name);
 
 void setup() {
 
-  // open serial interface for monitoring purposes
-  Serial.begin(115200);
-  Serial.println();
-
   pinMode(RX, FUNCTION_3);
 
-  // CAUTION: disables serial monitor
-  #ifndef DEBUG
-  pinMode(PIN_LED_RED, FUNCTION_3);
-  pinMode(PIN_LED_RED, OUTPUT);
-  pinMode(PIN_LED_BLUE, FUNCTION_3);
-  pinMode(PIN_LED_BLUE, OUTPUT);
-  pinMode(PIN_LED_GREEN, OUTPUT);
-  #endif
-  pinMode(D0, INPUT);
-  pinMode(D5, INPUT);
-  pinMode(D6, INPUT);
-  pinMode(D7, INPUT);
-  pinMode(D8, INPUT);
+  pinMode(DIP_PIN_1_LSB, INPUT);
+  pinMode(DIP_PIN_2, INPUT);
+  pinMode(DIP_PIN_3, INPUT);
+  pinMode(DIP_PIN_4, INPUT);
+  pinMode(DIP_PIN_5_MSB, INPUT);
 
+  #ifdef DEBUG
+    // open serial interface for monitoring purposes
+    Serial.begin(115200);
+    Serial.println();
+  #else
+    // enable status LED
+    pinMode(PIN_LED_RED, FUNCTION_3);
+    pinMode(PIN_LED_RED, OUTPUT);
+    pinMode(PIN_LED_BLUE, FUNCTION_3);
+    pinMode(PIN_LED_BLUE, OUTPUT);
+    pinMode(PIN_LED_GREEN, OUTPUT);
+  #endif
 
   setStatusLed(INITIALISATION);
+
   // connect to WiFi Network
   connectToWifi();
   getLocalIPString();
@@ -312,6 +313,7 @@ void loop() {
         }
         readCCS811(mqttClient, ccs, topicVOC, topicCO2);
         break;
+
       case BLUEDOT_BME_280_TSL_2591:
         static char topicTemperatureBluedot[30] = "sensors/temperature/";
         static char topicPressureBluedot[30] = "sensors/pressure/";
@@ -359,7 +361,9 @@ void getLocalIPString() {
 
 void connectToWifi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWD);
-  Serial.print("WiFi Connecting");
+  #ifdef DEBUG
+    Serial.print("WiFi Connecting");
+  #endif
   // sometimes stuck in while-loop; TO DO
   int counterTimeout = 0;
   while (WiFi.status() != WL_CONNECTED) {
@@ -367,20 +371,16 @@ void connectToWifi() {
       setStatusLed(WLAN_ERROR);
     }
     delay(500);
-    Serial.printf(".");
+    #ifdef DEBUG
+      Serial.printf(".");
+    #endif
     counterTimeout++;
   }
-/*
-  Serial.printf("ip: %s\n", ipAddress);
-  // simulating waiting for connection, hopefully established after 3s
-  for (int i = 0; i < 20; i++) {
-    Serial.print(".");
-    delay(500);
-  }
-  */
-  Serial.println();
-  Serial.printf("Connection to WiFi network %s established, IP-address: ", WIFI_SSID);
-  Serial.println(WiFi.localIP());
+  #ifdef DEBUG
+    Serial.println();
+    Serial.printf("Connection to WiFi network %s established, IP-address: ", WIFI_SSID);
+    Serial.println(WiFi.localIP());
+  #endif
 }
 
 String macToStr(const uint8_t* mac)
@@ -400,19 +400,27 @@ void connectToMosquittoBroker(const char* brokerIP) {
 
   char MQTT_Name[30] = "ESP_";
   strcat(MQTT_Name, WiFi.macAddress().c_str());
+
   #ifdef DEBUG
     Serial.printf("MQTT Name: %s\n", MQTT_Name);
+    Serial.printf("MQTT Connecting");
   #endif
 
-  // simulating waiting for connection, hopefully established after 3s
-  Serial.printf("MQTT Connecting");
   if(!mqttClient.connect(MQTT_Name)){
     setStatusLed(MQTT_ERROR);
   }
-  Serial.println("Connected");
+
+  #ifdef DEBUG
+    Serial.println();
+    Serial.println("Connected");
+  #endif
 }
 
 void mqttHandshake(const char* deviceName) {
+  #ifdef DEBUG
+    Serial.print("Executing MQTT-Handshake, waiting for ID");
+  #endif
+
   mqttClient.setCallback(discoveryReceiveId);
   mqttClient.subscribe(DISCOVERY_NODERED_TO_DEVICE);
 
@@ -423,24 +431,46 @@ void mqttHandshake(const char* deviceName) {
       setStatusLed(ID_ERROR);
     }
     mqttClient.loop();
-    Serial.printf(".");
+    #ifdef DEBUG
+      Serial.printf(".");
+    #endif
     delay(500);
     counterTimeout++;
   }
-  Serial.println();
+
   mqttClient.unsubscribe(DISCOVERY_NODERED_TO_DEVICE);
+
+  #ifdef DEBUG
+    Serial.println();
+    Serial.printf("received ID: %s\n", deviceId);
+  #endif
 }
 
 int readDeviceType() {
-  int deviceTypePins[5]= {D0,D5,D6,D7,D8};
+  int deviceTypePins[5]= {
+    DIP_PIN_1_LSB,
+    DIP_PIN_2,
+    DIP_PIN_3,
+    DIP_PIN_4,
+    DIP_PIN_5_MSB
+  };
+
+  #ifdef DEBUG
+    Serial.print("DIP-configuration: ");
+  #endif
 
   for (int i = 0; i < 5; i++) {
-    Serial.printf("%d ", digitalRead(deviceTypePins[i]));
+    #ifdef DEBUG
+      Serial.printf("%d ", digitalRead(deviceTypePins[i]));
+    #endif
     if (digitalRead(deviceTypePins[i])) {
       deviceType+=pow(2,i);
     }
   }
-  Serial.println();
+
+  #ifdef DEBUG
+    Serial.println();
+  #endif
 
   isDeviceSensor = (deviceType < FIRST_ACTUATOR_ADDRESS);
 
@@ -448,11 +478,11 @@ int readDeviceType() {
 }
 
 void discoveryReceiveId(char* topic, byte* payload, unsigned int length) {
-  #ifdef DEBUG
-  Serial.println("MQTT MESSAGE RECEIVED");
-  Serial.printf("Topic: %s\n", topic);
-  Serial.printf("Length: %d\n", length);
-  Serial.print("Message: ");
+  #ifdef VERBOSE
+    Serial.println("MQTT MESSAGE RECEIVED");
+    Serial.printf("Topic: %s\n", topic);
+    Serial.printf("Length: %d\n", length);
+    Serial.print("Message: ");
   #endif
 
   for (unsigned int i = 0; i < length; i++)
@@ -463,26 +493,42 @@ void discoveryReceiveId(char* topic, byte* payload, unsigned int length) {
       // TO DO
       // error: ID too long
     }
-    Serial.print(char(payload[i]));
+    #ifdef VERBOSE
+      Serial.print(char(payload[i]));
+    #endif
   }
   if(length > CLIENT_ID_MAX_LENGTH) {
     deviceId[CLIENT_ID_MAX_LENGTH] = '\0';
   } else {
     deviceId[length] = '\0';
   }
-  Serial.println();
+  #ifdef VERBOSE
+    Serial.println();
+  #endif
   waitForClientId = false;
 }
 
 void configReceive(char* topic, byte* payload, unsigned int length) {
-  Serial.printf("config received, message: ");
+  #ifdef VERBOSE
+    Serial.println("MQTT MESSAGE RECEIVED");
+    Serial.printf("Topic: %s\n", topic);
+    Serial.printf("Length: %d\n", length);
+    Serial.print("Message: ");
+  #endif
   unsigned long intervalSeconds = 0;
   for (unsigned int i = 0; i < length; i++) {
-    Serial.print(char(payload[i]));
+    #ifdef VERBOSE
+      Serial.print(char(payload[i]));
+    #endif
     intervalSeconds += (char(payload[i]) - '0') * pow( 10, length - (i+1) );
   }
-  Serial.println();
-  Serial.printf("Interval in seconds: %lu\n", intervalSeconds);
+  #ifdef VERBOSE
+    Serial.println();
+  #endif
+
+  #ifdef DEBUG
+    Serial.printf("Interval configuration received. New interval in seconds: %lu\n", intervalSeconds);
+  #endif
   sensorInterval = intervalSeconds;
 }
 
@@ -520,4 +566,12 @@ void snooze(bool isBufferingEnabled, bool* buffer) {
       delay(1000);
     }
   }
+}
+
+void createDiscoveryMessage(char* messageBuffer, const char* name) {
+  strcpy(messageBuffer, "{\"name\":\"");
+  strcat(messageBuffer, name);
+  strcat(messageBuffer, "\",\"ip\":\"");
+  strcat(messageBuffer, ipAddress);
+  strcat(messageBuffer, "\"}");
 }

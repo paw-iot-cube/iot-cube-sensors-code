@@ -1,6 +1,9 @@
 #include <controlLed.h>
 #include <Arduino.h>
+#include <settings.h>
 
+// private functions
+void setLedColour(int led);
 
 void setLedColour(int led) {
   #ifndef DEBUG
@@ -44,47 +47,83 @@ void setStatusLed(int status)
 {
   switch (status) {
     case INITIALISATION:
-      setLedColour(LED_BLUE);
+      #ifdef DEBUG
+        Serial.println("[STATUS] Initialisation started");
+      #else
+        setLedColour(LED_BLUE);
+      #endif
       break;
 
     case C0NNECTED:
-      setLedColour(LED_GREEN);
+      #ifdef DEBUG
+        Serial.println("[STATUS] Initialisation completed");
+      #else
+        setLedColour(LED_GREEN);
+      #endif
       break;
 
     case WLAN_ERROR:
-      while (true) {
-        setLedColour(LED_PURPLE);
-        delay(1250);
-        setLedColour(LED_OFF);
-        delay(1250);
-      }
+      #ifdef DEBUG
+        Serial.println("[ERROR] WiFi connection failed");
+        while(true) {
+          delay(10000);
+        }
+      #else
+        while (true) {
+          setLedColour(LED_PURPLE);
+          delay(1250);
+          setLedColour(LED_OFF);
+          delay(1250);
+        }
+      #endif
       break;
 
     case MQTT_ERROR:
-      while (true) {
-        setLedColour(LED_PURPLE);
-        delay(70);
-        setLedColour(LED_OFF);
-        delay(70);
-      }
+      #ifdef DEBUG
+        Serial.println("[ERROR] MQTT connection failed");
+        while(true) {
+          delay(10000);
+        }
+      #else
+        while (true) {
+          setLedColour(LED_PURPLE);
+          delay(70);
+          setLedColour(LED_OFF);
+          delay(70);
+        }
+      #endif
       break;
 
     case ID_ERROR:
-      while (true) {
-        setLedColour(LED_RED);
-        delay(70);
-        setLedColour(LED_OFF);
-        delay(70);
-      }
+      #ifdef DEBUG
+        Serial.println("[ERROR] timeout while waiting for ID");
+        while(true) {
+          delay(10000);
+        }
+      #else
+        while (true) {
+          setLedColour(LED_RED);
+          delay(70);
+          setLedColour(LED_OFF);
+          delay(70);
+        }
+      #endif
       break;
 
     case DIP_ERROR:
-      while (true) {
-        setLedColour(LED_RED);
-        delay(1250);
-        setLedColour(LED_OFF);
-        delay(1250);
-      }
+      #ifdef DEBUG
+        Serial.println("[ERROR] unknown DIP-configuration");
+        while(true) {
+          delay(10000);
+        }
+      #else
+        while (true) {
+          setLedColour(LED_RED);
+          delay(1250);
+          setLedColour(LED_OFF);
+          delay(1250);
+        }
+      #endif
       break;
 
     default:

@@ -11,6 +11,7 @@
 #include <Adafruit_MPR121.h>
 #ifndef READSENSORVALUES_H
 #define READSENSORVALUES_H
+
 void readANALOG(PubSubClient mqtt, int pin, const char* topic);
 void readVEML6070(PubSubClient mqtt, Adafruit_VEML6070 veml, const char* topic);
 void readHCSR501(PubSubClient mqtt, bool* bufferedValue, const char* topic);
@@ -23,6 +24,7 @@ void readBLUEDOT(PubSubClient mqtt, BlueDot_BME280_TSL2591 bluedotBme, BlueDot_B
 void readBUTTON(PubSubClient mqtt, bool* bufferedValue, const char* buttonTopic);
 void readMPR121(PubSubClient mqtt, Adafruit_MPR121 mpr121, const char* touchTopic);
 
+// sensor DIP-configurations
 #define ANALOG_IN 0
 #define VEML_6070 1
 #define HCSR_501 2
