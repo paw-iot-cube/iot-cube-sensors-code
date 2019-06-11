@@ -5,10 +5,10 @@
 #define DEBUG
 
 // uncomment for detailed information on received MQTT-messages
-//#define VERBOSE
+#define VERBOSE
 
 // mqtt-broker IP
-#define MQTT_BROKER_IP "192.168.0.180"
+#define MQTT_BROKER_IP "192.168.188.22"
 // TO DO: find another way of configuring this
 
 // standard read intervals for different sensors in ms

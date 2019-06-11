@@ -177,15 +177,12 @@ void readBLUEDOT(PubSubClient mqtt, BlueDot_BME280_TSL2591 bluedotBme, BlueDot_B
 }
 
 void readBUTTON(PubSubClient mqtt, bool* bufferedValue, const char* buttonTopic){
-  #ifdef DEBUG
-    Serial.printf("topic: %s, isButtonPressed: %d\n", buttonTopic, *bufferedValue);
-  #endif
 
-  static bool status = mqtt.publish(buttonTopic, (*bufferedValue)?"1":"0");
+
+  mqtt.publish(buttonTopic, (*bufferedValue)?"1":"0");
 
   #ifdef DEBUG
     Serial.printf("Button pressed: %d\n", *bufferedValue);
-    Serial.printf("Send message: %d\n", status);
   #endif
 
   *bufferedValue = false;

@@ -23,7 +23,7 @@
 #define DIP_PIN_2 D5
 #define DIP_PIN_3 D6
 #define DIP_PIN_4 D7
-#define DIP_PIN_5_MSB RX
+#define DIP_PIN_5_MSB D8
 
 
 // true if device is a sensor
@@ -269,7 +269,11 @@ void loop() {
 
       case MAX_44009:
         // TO DO
-        readMAX44009(mqttClient,max44009,"test");
+        static char topicLuminous[30] = "sensors/luminous/";
+        readMAX44009(mqttClient,max44009,topicLuminous);
+        if(isFirstIteration) {
+          strcat(topicLuminous, deviceId);
+        }
         break;
 
       case DHT_22:
