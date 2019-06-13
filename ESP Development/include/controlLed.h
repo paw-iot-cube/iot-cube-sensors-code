@@ -12,7 +12,7 @@
 //pins
 #define PIN_LED_RED TX
 #define PIN_LED_GREEN D3
-#define PIN_LED_BLUE RX
+#define PIN_LED_BLUE D8
 
 
 // status codes

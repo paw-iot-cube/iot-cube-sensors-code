@@ -23,7 +23,7 @@
 #define DIP_PIN_2 D5
 #define DIP_PIN_3 D6
 #define DIP_PIN_4 D7
-#define DIP_PIN_5_MSB D8
+#define DIP_PIN_5_MSB RX
 
 
 // true if device is a sensor
