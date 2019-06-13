@@ -23,7 +23,7 @@
 #define DIP_PIN_2 D5
 #define DIP_PIN_3 D6
 #define DIP_PIN_4 D7
-#define DIP_PIN_5_MSB D8
+#define DIP_PIN_5_MSB RX
 
 
 // true if device is a sensor
@@ -78,11 +78,16 @@ void setup() {
 
   pinMode(RX, FUNCTION_3);
 
+#ifndef DEBUG
+  pinMode(TX, FUNCTION_3);
+#endif
+
   pinMode(DIP_PIN_1_LSB, INPUT);
   pinMode(DIP_PIN_2, INPUT);
   pinMode(DIP_PIN_3, INPUT);
   pinMode(DIP_PIN_4, INPUT);
   pinMode(DIP_PIN_5_MSB, INPUT);
+
 
   #ifdef DEBUG
     // open serial interface for monitoring purposes
@@ -90,13 +95,12 @@ void setup() {
     Serial.println();
   #else
     // enable status LED
-    pinMode(PIN_LED_RED, FUNCTION_3);
     pinMode(PIN_LED_RED, OUTPUT);
     pinMode(PIN_LED_BLUE, FUNCTION_3);
     pinMode(PIN_LED_BLUE, OUTPUT);
     pinMode(PIN_LED_GREEN, OUTPUT);
   #endif
-
+  Serial.begin(115200);
   setStatusLed(INITIALISATION);
 
   // connect to WiFi Network

@@ -26,9 +26,9 @@ void readMPR121(PubSubClient mqtt, Adafruit_MPR121 mpr121, const char* touchTopi
 
 // sensor DIP-configurations
 #define ANALOG_IN 0
-#define VEML_6070 3
+#define VEML_6070 1
 #define HCSR_501 2
-#define MAX_44009 1
+#define MAX_44009 3
 #define DHT_22 4
 #define BME_280 5
 #define HCSR_04 6
