@@ -2,10 +2,10 @@
 #define SETTINGS_H
 
 // uncomment to enable debug messages
-#define DEBUG
+//#define DEBUG
 
 // uncomment for detailed information on received MQTT-messages
-#define VERBOSE
+//#define VERBOSE
 
 // mqtt-broker IP
 #define MQTT_BROKER_IP "192.168.188.22"
