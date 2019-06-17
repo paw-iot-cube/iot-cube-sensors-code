@@ -17,7 +17,7 @@
 
 // wifi credentials
 #define WIFI_SSID "FRITZ!Box 7490"
-#define WIFI_PASSWD "26489093048613568547"
+#define WIFI_PASSWD "paw2019iot"
 // TO DO: find another way of configuring and storing these
 
 #endif

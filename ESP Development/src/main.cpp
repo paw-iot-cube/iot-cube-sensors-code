@@ -463,7 +463,7 @@ int readDeviceType() {
     Serial.print("DIP-configuration: ");
   #endif
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 4; i++) {
     #ifdef DEBUG
       Serial.printf("%d ", digitalRead(deviceTypePins[i]));
     #endif

@@ -3,10 +3,10 @@
 #include <PubSubClient.h>
 
 // first actuator is at DIP-config 20
-#define FIRST_ACTUATOR_ADDRESS 20
+#define FIRST_ACTUATOR_ADDRESS 12
 
 // actuator DIP-configurations
-#define LED 20
+#define LED 12
 
 void setLed(int led, bool status);
 
